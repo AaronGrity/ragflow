@@ -315,12 +315,57 @@ docker build --platform linux/amd64 -f Dockerfile -t infiniflow/ragflow:nightly 
    ```bash
    git clone https://github.com/infiniflow/ragflow.git
    cd ragflow/
+   ```
+
+   ```bash
    uv sync --python 3.10 --all-extras # install RAGFlow dependent python modules
-   uv run download_deps.py
+   ```
+   注意：如果在执行上述命令时遇到 "os operation error" 等问题，可以切换为以下方式安装基础依赖：
+
+   ```bash
+   pip install -e .  # install RAGFlow basic dependent python modules
+   ```
+   针对 macOS（尤其是 Apple Silicon）用户的特别提示
+
+   如果在安装过程中出现 pyicu building error 错误，请严格按照以下步骤操作。否则可能会浪费你大量时间。
+   
+   2.1. 安装 ICU 并通过 pkg-config 配置路径
+   你可以按照 ICU 的构建说明进行安装，或者使用 Homebrew 快速安装：
+   ```bash
+   # 安装 libicu（Homebrew keg-only 包）
+   brew install pkg-config icu4c
+   ```
+   然后配置环境变量以确保 setup.py 能够找到 ICU：
+   ```bash
+   # 添加 ICU 的可执行文件和 pkgconfig 路径
+   export PATH="$(brew --prefix)/opt/icu4c/bin:$(brew --prefix)/opt/icu4c/sbin:$PATH"
+   export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:$(brew --prefix)/opt/icu4c/lib/pkgconfig"
+   ```
+   2.2. 安装 PyICU 使用与 Python 分布一致的 C++ 编译器
+
+   请根据你使用的 Python 构建方式选择对应的编译器设置：
+
+   如果你使用的是 gcc 构建的 CPython（例如通过 Homebrew 安装）：
+   ```bash
+   export CC="$(which gcc)" CXX="$(which g++)"
+   ```
+   如果你使用的是系统自带或基于 clang 的 CPython，请确保使用系统 clang(如果不确定就不执行这一行，只执行上面的，如果还报错就再执行这个)：
+   ```bash
+   unset CC CXX
+   ```
+   最后，避免使用旧的 wheel 文件进行安装：
+   ```bash
+   pip install --no-binary=:pyicu: pyicu
+   ```
+3. 继续开始正常的工作安装其他依赖
+   ```bash
+   uv run download_deps.py #如果出现了connection错误，原因是里面很多网址被墙了，需要科学上网，或者修改成国内镜像
    pre-commit install
    ```
 
-3. Launch the dependent services (MinIO, Elasticsearch, Redis, and MySQL) using Docker Compose:
+
+
+4. Launch the dependent services (MinIO, Elasticsearch, Redis, and MySQL) using Docker Compose:
 
    ```bash
    docker compose -f docker/docker-compose-base.yml up -d
@@ -332,13 +377,13 @@ docker build --platform linux/amd64 -f Dockerfile -t infiniflow/ragflow:nightly 
    127.0.0.1       es01 infinity mysql minio redis sandbox-executor-manager
    ```
 
-4. If you cannot access HuggingFace, set the `HF_ENDPOINT` environment variable to use a mirror site:
+5. If you cannot access HuggingFace, set the `HF_ENDPOINT` environment variable to use a mirror site:
 
    ```bash
    export HF_ENDPOINT=https://hf-mirror.com
    ```
 
-5. If your operating system does not have jemalloc, please install it as follows:
+6. If your operating system does not have jemalloc, please install it as follows:
 
    ```bash
    # ubuntu
@@ -347,7 +392,7 @@ docker build --platform linux/amd64 -f Dockerfile -t infiniflow/ragflow:nightly 
    sudo yum install jemalloc
    ```
    
-6. Launch backend service:
+7. Launch backend service:
 
    ```bash
    source .venv/bin/activate
@@ -355,14 +400,14 @@ docker build --platform linux/amd64 -f Dockerfile -t infiniflow/ragflow:nightly 
    bash docker/launch_backend_service.sh
    ```
 
-7. Install frontend dependencies:
+8. Install frontend dependencies:
 
    ```bash
    cd web
    npm install
    ```
 
-8. Launch frontend service:
+9. Launch frontend service:
 
    ```bash
    npm run dev
@@ -372,7 +417,7 @@ docker build --platform linux/amd64 -f Dockerfile -t infiniflow/ragflow:nightly 
 
    ![](https://github.com/user-attachments/assets/0daf462c-a24d-4496-a66f-92533534e187)
 
-9. Stop RAGFlow front-end and back-end service after development is complete:
+10. Stop RAGFlow front-end and back-end service after development is complete:
 
    ```bash
    pkill -f "ragflow_server.py|task_executor.py"
